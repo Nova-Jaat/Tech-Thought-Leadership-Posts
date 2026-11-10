@@ -1,0 +1,72 @@
+🚨 A client called me at 2 AM. Their web app was down.
+
+I SSHed in. Ran the first check.
+
+nginx.service — Active: active (running) ✅
+
+The service was running. So why were users getting "This site can't be reached"?
+
+Here's the structured troubleshooting path I followed — and what finally found the issue. 👇
+
+——————————————————————
+
+A running service ≠ a working application.
+
+The process can be alive while the port is wrong, the firewall is blocking, or the config is broken. Systemctl only tells you the process is up — not that the service is functional.
+
+——————————————————————
+
+🔍 The 5-Step Troubleshooting Path
+
+1️⃣ Check the service status
+sudo systemctl status nginx
+
+Don't just look for "active" — scroll for warnings, failed units, or permission errors buried in the output.
+
+2️⃣ Read the application logs
+sudo journalctl -u nginx -n 50
+
+This is where the real story is. Config errors, binding failures, and crash loops all show up here.
+
+3️⃣ Verify the listening port
+sudo ss -tulnp | grep nginx
+
+Is nginx actually bound to port 80 or 443? A misconfigured listen directive will make it bind to the wrong port silently.
+
+4️⃣ Test local connectivity
+curl -I http://localhost
+
+If this fails but the service is "running," the issue is application-level — not network.
+
+5️⃣ Check network access
+
+Work outward from the server:
+🔥 Linux firewall: sudo firewall-cmd --list-all or sudo iptables -L
+☁️ Cloud Security Groups (AWS / Azure / GCP) — is port 80/443 open?
+🔗 Network routes and load balancer health checks
+
+——————————————————————
+
+💡 Key Lesson:
+
+Don't restart the service hoping it fixes itself.
+
+Follow the path:
+
+Service → Logs → Port → Local Test → Network
+
+Each step narrows the blast radius. Find where it breaks, then fix that thing.
+
+——————————————————————
+
+In my case? The firewall had been updated during a routine patch window. Port 443 was silently blocked. The service was perfect — the network layer wasn't.
+
+Took 8 minutes to find. Would have taken 2 hours without a structured approach.
+
+——————————————————————
+
+🔁 Save this post. You'll need it at 2 AM someday.
+
+👇 What's your first command when an app goes down — and has a structured checklist ever saved you in a production incident?
+
+#Linux #RHEL #LinuxAdministration #DevOps #CloudOperations #Troubleshooting #SRE
